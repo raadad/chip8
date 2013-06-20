@@ -1,0 +1,1 @@
+console.log i*2 for i in [0..100/2]
