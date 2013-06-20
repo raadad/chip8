@@ -17,8 +17,10 @@ start = ->
     screen = []
     screen[yy] = [] for yy in [0..32]
     screen[yy][xx] = ' ' for xx in [0..64] for yy in [0..32]
-    keys = []
     bufferon = false
+    running = true
+    keypress = null
+
     clear = ->
         screen[yy] = [] for yy in [0..32]
         screen[yy][xx] = ' ' for xx in [0..64] for yy in [0..32]
@@ -42,17 +44,29 @@ start = ->
         0xF0, 0x80, 0xF0, 0x80, 0x80  # F
     ]
 
-    rom = "
-6e0100e06d016a016b018cd08ce24c00
-122088d0223e3a4012206a017b063c3f
-7d013d3f120af00a400589e48ee43e40
-12026a1c6b0d889000e0223e123ca294
-f833f2652254dab57a0481202254dab5
-7a0500ee8310833483348314a262f31e
-00eee0a0a0a0e04040404040e020e080
-e0e020e020e0a0a0e02020e080e020e0
-e080e0a0e0e020202020e0a0e0a0e0e0
-a0e020e0"
+    keys = 
+        "1": -> return 0x1  # 1
+        "2": -> return 0x2  # 2
+        "3": -> return 0x3  # 3
+        "4": -> return 0x4  # 4
+        "q": -> return 0x5  # Q
+        "w": -> return 0x6  # W
+        "e": -> return 0x7  # E
+        "r": -> return 0x8  # R
+        "a": -> return 0x9  # A
+        "s": -> return 0xA  # S
+        "d": -> return 0xB  # D
+        "f": -> return 0xC  # F
+        "z": -> return 0xD  # Z
+        "x": -> return 0xE  # X
+        "c": -> return 0xF  # C
+        "v": -> return 0x10  # V
+
+        "q": -> process.exit(); return false
+        "w": -> bufferon = !bufferon; return false
+
+
+    rom = "6e0100e06d016a016b018cd08ce24c00122088d0223e3a4012206a017b063c3f7d013d3f120af00a400589e48ee43e4012026a1c6b0d889000e0223e123ca294f833f2652254dab57a0481202254dab57a0500ee8310833483348314a262f31e00eee0a0a0a0e04040404040e020e080e0e020e020e0a0a0e02020e080e020e0e080e0a0e0e020202020e0a0e0a0e0e0a0e020e0"
 
     memory[i] = fonts[i] for val,i in fonts
     memory[512+t] = parseInt(rom.slice(t*2,t*2+2), 16) for t in [0..rom.length / 2]
@@ -64,7 +78,7 @@ a0e020e0"
         0x00E0: ->
             clear()
         0x00EE: ->
-            pc = [--pointer]
+            pc = stack[--pointer]
         0x1000: ->
             pc = opcode & 0xFFF
         0x2000: ->
@@ -125,9 +139,9 @@ a0e020e0"
                     if(spr & (0x80))
                         xpos = v[x] + xx
                         ypos = v[y] + yy
-                        #console.log(opcode,v,xpos,v[x],ypos,v[y])
-                        ypos = 0 if ypos > 32
-                        xpos = 0 if xpos > 64
+
+                        ypos = 0  if ypos > 32
+                        xpos = 0  if xpos > 64
                         xpos = 64 if xpos < 0
                         ypos = 32 if ypos < 32
                         screen[ypos][xpos] = "#"
@@ -139,6 +153,12 @@ a0e020e0"
         0xF007: ->
             v[x] = delay_timer
         0xF00A: ->
+            v[x] = 
+            running = false;
+            keypress = (key) ->
+                v[x] = key
+                running = true;
+
 
         0xF015: ->
             delay_timer = v[x]
@@ -158,53 +178,51 @@ a0e020e0"
         0xF065: ->
             v[itr] = memory[i + itr] for itr in [0..x]
 
+    cttr = 0;
     cycle = ->
-        opcode = memory[pc] << 8 | memory[pc+1]
-        x = opcode & (0x0F00) >> 8
-        y = opcode & (0x00F0) >> 4
-        #console.log(opcode.toString(16),pc,v,x,y);
-        method = opx[opcode & 0xF0FF] unless method
-        method = opx[opcode & 0xF00F] unless method
-        method = opx[opcode & 0xF000] unless method
-        unless method
+        if running
+            keypress = (key) -> console.log "fall through"
+            opcode = memory[pc] << 8 | memory[pc+1]
+            x = (opcode & 0x0F00) >> 8
+            y = (opcode & 0x00F0) >> 4
             console.log(opcode.toString(16),pc,v,x,y,memory[pc],memory[pc+1]);
-            throw "invalid opcode"
+            method = opx[opcode & 0xF0FF] unless method
+            method = opx[opcode & 0xF00F] unless method
+            method = opx[opcode & 0xF000] unless method
+            unless method
+                console.log(opcode.toString(16),pc,v,x,y,memory[pc],memory[pc+1]);
+                throw "invalid opcode"
+            pc += 2
+            method()
+            cttr++
+            if(cttr < -1314)
+                System.exit();
+            
+            
+            sound_timer-- unless sound_timer < 1
+            delay_timer-- unless delay_timer < 1
+            3 if sound_timer > 1
 
-        method()
-
-        pc += 2
-        sound_timer-- unless sound_timer < 1
-        delay_timer-- unless delay_timer < 1
-        3 if sound_timer > 1
-
-        buffer = ""
-        for k, yy in screen
-            buffer+="\x1B[#{yy};#{0}H";
-            for vv,xx in screen[yy]
-                buffer+=vv;
-        buffer+="\x1B[#{32};#{0}H";
-        if bufferon
-           process.stdout.write(buffer)
-        else
-            console.log(opcode.toString(16),pc,v,x,y,memory[pc],memory[pc+1]);
+            buffer = ""
+            for k, yy in screen
+                buffer+="\x1B[#{yy};#{0}H";
+                for vv,xx in screen[yy]
+                    buffer+=vv;
+            buffer+="\x1B[#{32};#{0}H";
+            if bufferon
+               process.stdout.write(buffer)
+            else
+               #console.log(opcode.toString(16),pc,v,x,y,memory[pc],memory[pc+1]);
 
         setImmediate(cycle)
-
     process.nextTick cycle
 
     sound = ->
-        console.log("beep");
-
+        console.log("beep")
     process.stdin.setRawMode true
     process.stdin.setEncoding('utf8')
-
-
     process.stdin.on('data', (chunk) ->
-       process.exit() if chunk == "x"
-       bufferon = !bufferon if chunk == "y";
-    )
-
-    process.stdin.on('end', ->
-        process.stdout.write('end');
+        method = keys[chunk.toString()]
+        keypress method() if method
     )
 start()
