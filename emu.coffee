@@ -17,7 +17,7 @@ start = ->
     screen = []
     screen[yy] = [] for yy in [0..32]
     screen[yy][xx] = ' ' for xx in [0..64] for yy in [0..32]
-    bufferon = false
+    bufferon = true
     running = true
     keypress = null
 
@@ -66,7 +66,9 @@ start = ->
         "w": -> bufferon = !bufferon; return false
 
 
-    rom = "6e0100e06d016a016b018cd08ce24c00122088d0223e3a4012206a017b063c3f7d013d3f120af00a400589e48ee43e4012026a1c6b0d889000e0223e123ca294f833f2652254dab57a0481202254dab57a0500ee8310833483348314a262f31e00eee0a0a0a0e04040404040e020e080e0e020e020e0a0a0e02020e080e020e0e080e0a0e0e020202020e0a0e0a0e0e0a0e020e0"
+    rom = "6e0565006b066a00a30cdab17a043a4012087b023b1212066c206d1fa310dcd122f660006100a312d0117008a30ed0116040f015f00730001234c60f671e680169ffa30ed671a310dcd16004e0a17cfe6006e0a17c02603f8c02dcd1a30ed67186848794603f8602611f8712471f12ac46006801463f68ff47006901d6713f0112aa471f12aa600580753f0012aa6001f018806061fc8012a30cd07160fe890322f6750122f6456012de124669ff806080c53f0112ca610280153f0112e080153f0112ee80153f0112e86020f018a30e7eff80e080046100d0113e00123012de78ff48fe68ff12ee7801480268016004f01869ff1270a314f533f265f12963376400d3457305f229d34500eee0008000fc00aa0000000000"
+
+
 
     memory[i] = fonts[i] for val,i in fonts
     memory[512+t] = parseInt(rom.slice(t*2,t*2+2), 16) for t in [0..rom.length / 2]
@@ -90,11 +92,13 @@ start = ->
         0x4000: ->
             pc += 2 if v[x] != (opcode & 0x00FF)
         0x5000: ->
-            pc += 2 if v[x] != v[y]
+            pc += 2 if v[x] == v[y]
         0x6000: ->
             v[x] = (opcode & 0xFF)
         0x7000: ->
-            v[x] = v[x] + (opcode & 0xFF)
+            val = (opcode & 0xFF) + v[x]
+            val -= 256 if val > 256
+            v[x] = val
         0x8000: ->
             v[x] = v[y]
         0x8001: ->
@@ -112,14 +116,14 @@ start = ->
             v[x] = v[x] + v[y]
             v[x] = v[x] + 256 if v[x] < 0
         0x8006: ->
-            v[15] = 1 if v[x] & 0x000F
+            v[15] = 1 if v[x] & 0x1
             v[x] = v[x] >> 1
         0x8007: ->
             v[15] = +(v[x] > v[y])
             v[x] = v[y] - v[x]
             v[x] = v[x] + 256 if v[x] < 0
         0x800E: ->
-            v[15] = v[x] & 0xF
+            v[15] = +(v[x] & 0x80)
             v[x] = v[x] << 1
             v[x] = v[x] - 256 if v[x] > 255
         0x9000: ->
@@ -132,19 +136,27 @@ start = ->
             v[x] =  Math.floor(Math.random() * 0xFF) & (opcode & 0xFF)
         0xD000: ->
             v[15] = 0
-            n = opcode & 0x000F
+            n = opcode & 0x000F           
             for yy in [0..n]
                 spr = memory[i+yy]
                 for xx in [0..8]
+                    xpos = v[x] + xx
+                    ypos = v[y] + yy
+                    xpos -= 64  if xpos > 64
+                    xpos += 64  if xpos < 0
+                    ypos -= 32  if ypos > 32
+                    ypos += 32  if ypos < 0
+                    hasPixel = screen[ypos][xpos] == "#"
+                    screen[ypos][xpos] = " "              
                     if(spr & (0x80))
-                        xpos = v[x] + xx
-                        ypos = v[y] + yy
+                        if(screen[ypos][xpos] == ' ')
+                            screen[ypos][xpos] = "#"
+                        else
+                            screen[ypos][xpos] = "#"
+                            v[15] = 1    
+                    if( hasPixel && screen[ypos][xpos]  == ' ') then v[15] = 1  else  
+                    spr <<= 1    
 
-                        ypos = 0  if ypos > 32
-                        xpos = 0  if xpos > 64
-                        xpos = 64 if xpos < 0
-                        ypos = 32 if ypos < 32
-                        screen[ypos][xpos] = "#"
 
         0xE09E: ->
             pc += 2 if keys[v[x]]
@@ -158,8 +170,6 @@ start = ->
             keypress = (key) ->
                 v[x] = key
                 running = true;
-
-
         0xF015: ->
             delay_timer = v[x]
         0xF018: ->
@@ -185,7 +195,7 @@ start = ->
             opcode = memory[pc] << 8 | memory[pc+1]
             x = (opcode & 0x0F00) >> 8
             y = (opcode & 0x00F0) >> 4
-            console.log(opcode.toString(16),pc,v,x,y,memory[pc],memory[pc+1]);
+        #console.log(opcode.toString(16),pc,v,x,y,memory[pc],memory[pc+1]);
             method = opx[opcode & 0xF0FF] unless method
             method = opx[opcode & 0xF00F] unless method
             method = opx[opcode & 0xF000] unless method
@@ -194,10 +204,6 @@ start = ->
                 throw "invalid opcode"
             pc += 2
             method()
-            cttr++
-            if(cttr < -1314)
-                System.exit();
-            
             
             sound_timer-- unless sound_timer < 1
             delay_timer-- unless delay_timer < 1
@@ -205,14 +211,16 @@ start = ->
 
             buffer = ""
             for k, yy in screen
-                buffer+="\x1B[#{yy};#{0}H";
+                
                 for vv,xx in screen[yy]
+                    buffer+="\x1B[#{yy+1};#{xx}H";
                     buffer+=vv;
-            buffer+="\x1B[#{32};#{0}H";
+            buffer+="\x1B[#{32};#{3}H";
             if bufferon
                process.stdout.write(buffer)
             else
-               #console.log(opcode.toString(16),pc,v,x,y,memory[pc],memory[pc+1]);
+               #console.log(screen)
+               console.log(opcode.toString(16),pc,v,x,y,memory[pc],memory[pc+1]);
 
         setImmediate(cycle)
     process.nextTick cycle
