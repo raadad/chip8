@@ -37,7 +37,7 @@ var Chip8 = function () {
      unsetKey: function(key) {
         delete this.keys[key];
      },
-	 
+
 	 setKeyState: function(key, depressed) {
 		this[["unset", "set"][+depressed] + "Key"](key);
 	 },
@@ -195,7 +195,7 @@ var Chip8 = function () {
      },
      cttr: 0,
      emulateCycle: function () {
-         var opcode = this.memory[this.pc] << 8 | this.memory[this.pc + 1];   
+         var opcode = this.memory[this.pc] << 8 | this.memory[this.pc + 1];
          var x = (opcode & 0x0F00) >> 8;
          var y = (opcode & 0x00F0) >> 4;
          console.log(opcode.toString(16),this.pc,this.v,x,y,this.memory[this.pc],this.memory[this.pc+1],this.i);
@@ -570,7 +570,7 @@ var CanvasRenderer = function() {
 CanvasRenderer.prototype = {
 
     clear: function () {
-        
+
     },
 
     render: function (display) {
@@ -580,15 +580,15 @@ CanvasRenderer.prototype = {
     beep: function() {
 
     },
-    
+
     setFgColor: function(color) {
 
     },
-    
+
     setCellSize: function(cellSize) {
 
     },
-    
+
     getFps: function() {
 
         return 0;

@@ -15,7 +15,7 @@
     }
     x = 0;
     y = 0;
-    i = 0;
+    i = 233;
     sound_timer = 0;
     delay_timer = 0;
     pc = 0x200;
@@ -134,9 +134,10 @@
     };
     rom = "6e0565006b066a00a30cdab17a043a4012087b023b1212066c206d1fa310dcd122f660006100a312d0117008a30ed0116040f015f00730001234c60f671e680169ffa30ed671a310dcd16004e0a17cfe6006e0a17c02603f8c02dcd1a30ed67186848794603f8602611f8712471f12ac46006801463f68ff47006901d6713f0112aa471f12aa600580753f0012aa6001f018806061fc8012a30cd07160fe890322f6750122f6456012de124669ff806080c53f0112ca610280153f0112e080153f0112ee80153f0112e86020f018a30e7eff80e080046100d0113e00123012de78ff48fe68ff12ee7801480268016004f01869ff1270a314f533f265f12963376400d3457305f229d34500eee0008000fc00aa0000000000";
     rom = "6e0565006b066a00a30cdab17a043a4012087b023b1212066c206d1fa310dcd122f660006100a312d0117008a30ed0116040f015f00730001234c60f671e680169ffa30ed671a310dcd16004e0a17cfe6006e0a17c02603f8c02dcd1a30ed67186848794603f8602611f8712471f12ac46006801463f68ff47006901d6713f0112aa471f12aa600580753f0012aa6001f018806061fc8012a30cd07160fe890322f6750122f6456012de124669ff806080c53f0112ca610280153f0112e080153f0112ee80153f0112e86020f018a30e7eff80e080046100d0113e00123012de78ff48fe68ff12ee7801480268016004f01869ff1270a314f533f265f12963376400d3457305f229d34500eee0008000fc00aa0000000000";
-    for (i = _j = 0, _len = fonts.length; _j < _len; i = ++_j) {
-      val = fonts[i];
-      memory[i] = fonts[i];
+    rom = "6e0565006b066a00a30cdab17a043a4012087b023b1212066c206d1fa310dcd122f660006100a312d0117008a30ed0116040f015f00730001234c60f671e680169ffa30ed671a310dcd16004e0a17cfe6006e0a17c02603f8c02dcd1a30ed67186848794603f8602611f8712471f12ac46006801463f68ff47006901d6713f0112aa471f12aa600580753f0012aa6001f018806061fc8012a30cd07160fe890322f6750122f6456012de124669ff806080c53f0112ca610280153f0112e080153f0112ee80153f0112e86020f018a30e7eff80e080046100d0113e00123012de78ff48fe68ff12ee7801480268016004f01869ff1270a314f533f265f12963376400d3457305f229d34500eee0008000fc00aa0000000000";
+    for (ii = _j = 0, _len = fonts.length; _j < _len; ii = ++_j) {
+      val = fonts[ii];
+      memory[ii] = fonts[i];
     }
     for (t = _k = 0, _ref = rom.length / 2; 0 <= _ref ? _k <= _ref : _k >= _ref; t = 0 <= _ref ? ++_k : --_k) {
       memory[512 + t] = parseInt(rom.slice(t * 2, t * 2 + 2), 16);
@@ -328,7 +329,7 @@
     cycle = function() {
       var method, _l;
 
-      for (_l = 0; _l <= 9; _l++) {
+      for (i = _l = 0; _l <= 9; i = ++_l) {
         if (running) {
           keypress = function(key) {
             keydown = key;
@@ -353,20 +354,21 @@
             console.log(opcode.toString(16), pc, v, x, y, memory[pc], memory[pc + 1]);
             throw "invalid opcode";
           }
+          console.log(opcode.toString(16), pc, v, x, y, memory[pc], memory[pc + 1], i);
           pc += 2;
           method();
           if (sound_timer > 0) {
             console.log('\0x7');
           }
+          if (!(sound_timer < 1)) {
+            sound_timer--;
+          }
+          if (!(delay_timer < 1)) {
+            delay_timer--;
+          }
         }
       }
-      if (!(sound_timer < 1)) {
-        sound_timer--;
-      }
-      if (!(delay_timer < 1)) {
-        delay_timer--;
-      }
-      return setImmediate(cycle);
+      return setTimeout(cycle, 10);
     };
     draw = function() {
       var buffer, k, vv, xx, yy, _l, _len1, _len2, _m, _ref1;
@@ -396,7 +398,7 @@
       }
       return setTimeout(draw, 1);
     };
-    process.nextTick(cycle);
+    cycle();
     process.nextTick(draw);
     process.stdin.setRawMode(true);
     process.stdin.setEncoding('utf8');
