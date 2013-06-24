@@ -195,15 +195,10 @@ var Chip8 = function () {
      },
      cttr: 0,
      emulateCycle: function () {
-         var opcode = this.memory[this.pc] << 8 | this.memory[this.pc + 1];
-    
+         var opcode = this.memory[this.pc] << 8 | this.memory[this.pc + 1];   
          var x = (opcode & 0x0F00) >> 8;
          var y = (opcode & 0x00F0) >> 4;
-         console.log(opcode.toString(16),this.pc,this.v,x,y,this.memory[this.pc],this.memory[this.pc+1]);
-         this.cttr++
-         if(this.cttr > 1314){
-            System.exit();
-        }
+         console.log(opcode.toString(16),this.pc,this.v,x,y,this.memory[this.pc],this.memory[this.pc+1],this.i);
          this.pc += 2;
 
          // Check first nibble to determine opcode.
@@ -413,7 +408,7 @@ var Chip8 = function () {
              // Cxkk
              // Set Vx equal to random byte AND kk.
              case 0xC000:
-                 this.v[x] = Math.floor(Math.random() * 0xFF) & (opcode & 0xFF)
+                 this.v[x] = Math.floor(5 * 0xFF) & (opcode & 0xFF)
                  break;
 
              // DRW Vx, Vy, nibble
@@ -608,8 +603,9 @@ ch.stop();
 ch.reset();
 
 program = [];
-rom ="6e0100e06d016a016b018cd08ce24c00122088d0223e3a4012206a017b063c3f7d013d3f120af00a400589e48ee43e4012026a1c6b0d889000e0223e123ca294f833f2652254dab57a0481202254dab57a0500ee8310833483348314a262f31e00eee0a0a0a0e04040404040e020e080e0e020e020e0a0a0e02020e080e020e0e080e0a0e0e020202020e0a0e0a0e0e0a0e020e0"
-
+//rom ="6e0100e06d016a016b018cd08ce24c00122088d0223e3a4012206a017b063c3f7d013d3f120af00a400589e48ee43e4012026a1c6b0d889000e0223e123ca294f833f2652254dab57a0481202254dab57a0500ee8310833483348314a262f31e00eee0a0a0a0e04040404040e020e080e0e020e020e0a0a0e02020e080e020e0e080e0a0e0e020202020e0a0e0a0e0e0a0e020e0"
+//rom = "a2cc6a0761006b086000d01170087bff3b00120a71047aff3a00120666006710a2cd6020611ed011631d623f820277ff470012aaff0aa2cbd23165ffc401340164ffa2cd6c006e04eea16cff6e06eea16c01d01180c4d0114f01129842006401423f64ff43006501431f12a4a2cbd23182448354d2313f011242431e12986a02fa187601467012aad231c401340164ffc501350165ff12426a03fa18a2cbd23173ff1236a2cbd2311228a2cdd011a2f0f633f2656318641bf029d3457305f129d3457305f229d34512c8018044ff"
+rom = "6e0565006b066a00a30cdab17a043a4012087b023b1212066c206d1fa310dcd122f660006100a312d0117008a30ed0116040f015f00730001234c60f671e680169ffa30ed671a310dcd16004e0a17cfe6006e0a17c02603f8c02dcd1a30ed67186848794603f8602611f8712471f12ac46006801463f68ff47006901d6713f0112aa471f12aa600580753f0012aa6001f018806061fc8012a30cd07160fe890322f6750122f6456012de124669ff806080c53f0112ca610280153f0112e080153f0112ee80153f0112e86020f018a30e7eff80e080046100d0113e00123012de78ff48fe68ff12ee7801480268016004f01869ff1270a314f533f265f12963376400d3457305f229d34500eee0008000fc00aa0000000000"
 for (var i = 0; i < rom.length / 2; i++) {
     program[i] = parseInt(rom.slice(i*2,i*2+2),16);
 }

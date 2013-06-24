@@ -3,7 +3,7 @@
   var start;
 
   start = function() {
-    var bufferon, clear, cttr, cycle, delay_timer, fonts, i, ii, keypress, keys, memory, opcode, opx, pc, pointer, rom, running, screen, sound, sound_timer, stack, stdin, t, v, val, x, xx, y, yy, _i, _j, _k, _l, _len, _m, _n, _ref;
+    var bufferon, clear, currentkey, cycle, cycleTimer, delay_timer, draw, drawTimer, fonts, i, ii, keyTimer, keydown, keypress, keys, memory, opcode, opx, pc, pointer, prevscreen, refresh, rom, running, screen, sound_timer, stack, stdin, t, v, val, x, y, _i, _j, _k, _len, _ref;
 
     stdin = process.openStdin();
     require('tty').setRawMode(true);
@@ -22,31 +22,50 @@
     stack = [];
     pointer = 0;
     screen = [];
-    for (yy = _j = 0; _j <= 32; yy = ++_j) {
-      screen[yy] = [];
-    }
-    for (yy = _k = 0; _k <= 32; yy = ++_k) {
-      for (xx = _l = 0; _l <= 64; xx = ++_l) {
-        screen[yy][xx] = ' ';
-      }
-    }
     bufferon = false;
+    currentkey = 0;
     running = true;
-    keypress = null;
-    clear = function() {
-      var _m, _n, _results;
+    keydown = 0;
+    keypress = 0;
+    keyTimer = null;
+    drawTimer = 0;
+    cycleTimer = 0;
+    prevscreen = [];
+    refresh = function() {
+      var xx, yy, _j, _k, _results;
 
-      for (yy = _m = 0; _m <= 32; yy = ++_m) {
+      for (yy = _j = 0; _j <= 31; yy = ++_j) {
+        prevscreen[yy] = [];
+      }
+      _results = [];
+      for (yy = _k = 0; _k <= 31; yy = ++_k) {
+        _results.push((function() {
+          var _l, _results1;
+
+          _results1 = [];
+          for (xx = _l = 0; _l <= 63; xx = ++_l) {
+            _results1.push(prevscreen[yy][xx] = true);
+          }
+          return _results1;
+        })());
+      }
+      return _results;
+    };
+    refresh();
+    clear = function() {
+      var xx, yy, _j, _k, _results;
+
+      for (yy = _j = 0; _j <= 31; yy = ++_j) {
         screen[yy] = [];
       }
       _results = [];
-      for (yy = _n = 0; _n <= 32; yy = ++_n) {
+      for (yy = _k = 0; _k <= 31; yy = ++_k) {
         _results.push((function() {
-          var _o, _results1;
+          var _l, _results1;
 
           _results1 = [];
-          for (xx = _o = 0; _o <= 64; xx = ++_o) {
-            _results1.push(screen[yy][xx] = ' ');
+          for (xx = _l = 0; _l <= 63; xx = ++_l) {
+            _results1.push(screen[yy][xx] = false);
           }
           return _results1;
         })());
@@ -55,72 +74,71 @@
     };
     clear();
     fonts = [0xF0, 0x90, 0x90, 0x90, 0xF0, 0x20, 0x60, 0x20, 0x20, 0x70, 0xF0, 0x10, 0xF0, 0x80, 0xF0, 0xF0, 0x10, 0xF0, 0x10, 0xF0, 0x90, 0x90, 0xF0, 0x10, 0x10, 0xF0, 0x80, 0xF0, 0x10, 0xF0, 0xF0, 0x80, 0xF0, 0x90, 0xF0, 0xF0, 0x10, 0x20, 0x40, 0x40, 0xF0, 0x90, 0xF0, 0x90, 0xF0, 0xF0, 0x90, 0xF0, 0x10, 0xF0, 0xF0, 0x90, 0xF0, 0x90, 0x90, 0xE0, 0x90, 0xE0, 0x90, 0xE0, 0xF0, 0x80, 0x80, 0x80, 0xF0, 0xE0, 0x90, 0x90, 0x90, 0xE0, 0xF0, 0x80, 0xF0, 0x80, 0xF0, 0xF0, 0x80, 0xF0, 0x80, 0x80];
-    keys = [
-      {
-        "1": function() {
-          return 0x1;
-        },
-        "2": function() {
-          return 0x2;
-        },
-        "3": function() {
-          return 0x3;
-        },
-        "4": function() {
-          return 0x4;
-        },
-        "q": function() {
-          return 0x5;
-        },
-        "w": function() {
-          return 0x6;
-        },
-        "e": function() {
-          return 0x7;
-        },
-        "r": function() {
-          return 0x8;
-        },
-        "a": function() {
-          return 0x9;
-        },
-        "s": function() {
-          return 0xA;
-        },
-        "d": function() {
-          return 0xB;
-        },
-        "f": function() {
-          return 0xC;
-        },
-        "z": function() {
-          return 0xD;
-        },
-        "x": function() {
-          return 0xE;
-        },
-        "c": function() {
-          return 0xF;
-        },
-        "v": function() {
-          return 0x10;
-        },
-        "q": function() {
-          process.exit();
-          return false;
-        },
-        "w": function() {
-          bufferon = !bufferon;
-          return false;
-        }
+    keys = {
+      "1": function() {
+        return 0x1;
+      },
+      "2": function() {
+        return 0x2;
+      },
+      "3": function() {
+        return 0x3;
+      },
+      "a": function() {
+        return 0x4;
+      },
+      "q": function() {
+        return 0x5;
+      },
+      "d": function() {
+        return 0x6;
+      },
+      "e": function() {
+        return 0x7;
+      },
+      "r": function() {
+        return 0x8;
+      },
+      "4": function() {
+        return 0x9;
+      },
+      "s": function() {
+        return 0xA;
+      },
+      "w": function() {
+        return 0xB;
+      },
+      "f": function() {
+        return 0xC;
+      },
+      "z": function() {
+        return 0xD;
+      },
+      "x": function() {
+        return 0xE;
+      },
+      "c": function() {
+        return 0xF;
+      },
+      "v": function() {
+        return 0x10;
+      },
+      "p": function() {
+        process.exit();
+        return false;
+      },
+      "l": function() {
+        bufferon = !bufferon;
+        return false;
       }
-    ];
-    rom = "6e0100e06d016a016b018cd08ce24c00122088d0223e3a4012206a017b063c3f7d013d3f120af00a400589e48ee43e4012026a1c6b0d889000e0223e123ca294f833f2652254dab57a0481202254dab57a0500ee8310833483348314a262f31e00eee0a0a0a0e04040404040e020e080e0e020e020e0a0a0e02020e080e020e0e080e0a0e0e020202020e0a0e0a0e0e0a0e020e0";
-    for (i = _m = 0, _len = fonts.length; _m < _len; i = ++_m) {
+    };
+    rom = "6e0565006b066a00a30cdab17a043a4012087b023b1212066c206d1fa310dcd122f660006100a312d0117008a30ed0116040f015f00730001234c60f671e680169ffa30ed671a310dcd16004e0a17cfe6006e0a17c02603f8c02dcd1a30ed67186848794603f8602611f8712471f12ac46006801463f68ff47006901d6713f0112aa471f12aa600580753f0012aa6001f018806061fc8012a30cd07160fe890322f6750122f6456012de124669ff806080c53f0112ca610280153f0112e080153f0112ee80153f0112e86020f018a30e7eff80e080046100d0113e00123012de78ff48fe68ff12ee7801480268016004f01869ff1270a314f533f265f12963376400d3457305f229d34500eee0008000fc00aa0000000000";
+    rom = "6e0565006b066a00a30cdab17a043a4012087b023b1212066c206d1fa310dcd122f660006100a312d0117008a30ed0116040f015f00730001234c60f671e680169ffa30ed671a310dcd16004e0a17cfe6006e0a17c02603f8c02dcd1a30ed67186848794603f8602611f8712471f12ac46006801463f68ff47006901d6713f0112aa471f12aa600580753f0012aa6001f018806061fc8012a30cd07160fe890322f6750122f6456012de124669ff806080c53f0112ca610280153f0112e080153f0112ee80153f0112e86020f018a30e7eff80e080046100d0113e00123012de78ff48fe68ff12ee7801480268016004f01869ff1270a314f533f265f12963376400d3457305f229d34500eee0008000fc00aa0000000000";
+    for (i = _j = 0, _len = fonts.length; _j < _len; i = ++_j) {
       val = fonts[i];
       memory[i] = fonts[i];
     }
-    for (t = _n = 0, _ref = rom.length / 2; 0 <= _ref ? _n <= _ref : _n >= _ref; t = 0 <= _ref ? ++_n : --_n) {
+    for (t = _k = 0, _ref = rom.length / 2; 0 <= _ref ? _k <= _ref : _k >= _ref; t = 0 <= _ref ? ++_k : --_k) {
       memory[512 + t] = parseInt(rom.slice(t * 2, t * 2 + 2), 16);
     }
     opx = {
@@ -149,7 +167,7 @@
         }
       },
       0x5000: function() {
-        if (v[x] !== v[y]) {
+        if (v[x] === v[y]) {
           return pc += 2;
         }
       },
@@ -157,7 +175,11 @@
         return v[x] = opcode & 0xFF;
       },
       0x7000: function() {
-        return v[x] = v[x] + (opcode & 0xFF);
+        val = (opcode & 0xFF) + v[x];
+        if (val > 255) {
+          val -= 256;
+        }
+        return v[x] = val;
       },
       0x8000: function() {
         return v[x] = v[y];
@@ -186,20 +208,20 @@
         }
       },
       0x8006: function() {
-        if (v[x] & 0x000F) {
+        if (v[x] & 0x1) {
           v[15] = 1;
         }
         return v[x] = v[x] >> 1;
       },
       0x8007: function() {
-        v[15] = +(v[x] > v[y]);
+        v[15] = +(v[y] > v[x]);
         v[x] = v[y] - v[x];
         if (v[x] < 0) {
           return v[x] = v[x] + 256;
         }
       },
       0x800E: function() {
-        v[15] = v[x] & 0xF;
+        v[15] = +(v[x] & 0x80);
         v[x] = v[x] << 1;
         if (v[x] > 255) {
           return v[x] = v[x] - 256;
@@ -217,37 +239,27 @@
         return pc = (opcode & 0xFFF) + v[0];
       },
       0xC000: function() {
-        return v[x] = Math.floor(Math.random() * 0xFF) & (opcode & 0xFF);
+        return v[x] = Math.floor(5 * 0xFF) & (opcode & 0xFF);
       },
       0xD000: function() {
-        var n, spr, xpos, ypos, _o, _results;
+        var n, xc, xx, yc, yy, _l, _ref1, _results;
 
         v[15] = 0;
         n = opcode & 0x000F;
         _results = [];
-        for (yy = _o = 0; 0 <= n ? _o <= n : _o >= n; yy = 0 <= n ? ++_o : --_o) {
-          spr = memory[i + yy];
+        for (yy = _l = 0, _ref1 = n - 1; 0 <= _ref1 ? _l <= _ref1 : _l >= _ref1; yy = 0 <= _ref1 ? ++_l : --_l) {
           _results.push((function() {
-            var _p, _results1;
+            var _m, _results1;
 
             _results1 = [];
-            for (xx = _p = 0; _p <= 8; xx = ++_p) {
-              if (spr & 0x80) {
-                xpos = v[x] + xx;
-                ypos = v[y] + yy;
-                if (ypos > 32) {
-                  ypos = 0;
+            for (xx = _m = 0; _m <= 7; xx = ++_m) {
+              xc = v[x] + xx;
+              yc = v[y] + yy;
+              if ((memory[i + yy] >> (7 - xx)) & 0x1) {
+                if (screen[v[y] + yy][v[x] + xx]) {
+                  v[15] = 1;
                 }
-                if (xpos > 64) {
-                  xpos = 0;
-                }
-                if (xpos < 0) {
-                  xpos = 64;
-                }
-                if (ypos < 32) {
-                  ypos = 32;
-                }
-                _results1.push(screen[ypos][xpos] = "#");
+                _results1.push(screen[yc][xc] = screen[yc][xc] ^ 1);
               } else {
                 _results1.push(void 0);
               }
@@ -258,12 +270,12 @@
         return _results;
       },
       0xE09E: function() {
-        if (keys[v[x]]) {
+        if (v[x] === keydown) {
           return pc += 2;
         }
       },
       0xE0A1: function() {
-        if (!keys[v[x]]) {
+        if (v[x] !== keydown) {
           return pc += 2;
         }
       },
@@ -271,7 +283,11 @@
         return v[x] = delay_timer;
       },
       0xF00A: function() {
-        return v[x] = running = false;
+        running = false;
+        return keypress = function(key) {
+          v[x] = key;
+          return running = true;
+        };
       },
       0xF015: function() {
         return delay_timer = v[x];
@@ -286,112 +302,114 @@
         return i = v[x] * 5;
       },
       0xF033: function() {
-        var itr, number, _o, _results;
-
-        number = v[x];
-        _results = [];
-        for (itr = _o = 3; _o >= 0; itr = --_o) {
-          memory[i + (itr - 1)] = parseInt(number % 10);
-          _results.push(number = number / 10);
-        }
-        return _results;
+        memory[i] = v[x] / 100;
+        memory[i + 1] = (v[x] % 100) / 10;
+        return memory[i + 2] = v[x] % 10;
       },
       0xF055: function() {
-        var itr, _o, _results;
+        var itr, _l, _results;
 
         _results = [];
-        for (itr = _o = 0; 0 <= x ? _o <= x : _o >= x; itr = 0 <= x ? ++_o : --_o) {
+        for (itr = _l = 0; 0 <= x ? _l <= x : _l >= x; itr = 0 <= x ? ++_l : --_l) {
           _results.push(memory[i + itr] = v[itr]);
         }
         return _results;
       },
       0xF065: function() {
-        var itr, _o, _results;
+        var itr, _l, _results;
 
         _results = [];
-        for (itr = _o = 0; 0 <= x ? _o <= x : _o >= x; itr = 0 <= x ? ++_o : --_o) {
+        for (itr = _l = 0; 0 <= x ? _l <= x : _l >= x; itr = 0 <= x ? ++_l : --_l) {
           _results.push(v[itr] = memory[i + itr]);
         }
         return _results;
       }
     };
-    cttr = 0;
     cycle = function() {
-      var buffer, k, method, vv, _len1, _len2, _o, _p, _ref1;
+      var method, _l;
 
-      opcode = memory[pc] << 8 | memory[pc + 1];
-      x = (opcode & 0x0F00) >> 8;
-      y = (opcode & 0x00F0) >> 4;
-      console.log(opcode.toString(16), pc, v, x, y, memory[pc], memory[pc + 1]);
-      if (!method) {
-        method = opx[opcode & 0xF0FF];
+      for (_l = 0; _l <= 9; _l++) {
+        if (running) {
+          keypress = function(key) {
+            keydown = key;
+            clearTimeout(keyTimer);
+            return keyTimer = setTimeout(function() {
+              return keydown = false;
+            }, 100);
+          };
+          opcode = memory[pc] << 8 | memory[pc + 1];
+          x = (opcode & 0x0F00) >> 8;
+          y = (opcode & 0x00F0) >> 4;
+          if (!method) {
+            method = opx[opcode & 0xF0FF];
+          }
+          if (!method) {
+            method = opx[opcode & 0xF00F];
+          }
+          if (!method) {
+            method = opx[opcode & 0xF000];
+          }
+          if (!method) {
+            console.log(opcode.toString(16), pc, v, x, y, memory[pc], memory[pc + 1]);
+            throw "invalid opcode";
+          }
+          pc += 2;
+          method();
+          if (sound_timer > 0) {
+            console.log('\0x7');
+          }
+        }
       }
-      if (!method) {
-        method = opx[opcode & 0xF00F];
-      }
-      if (!method) {
-        method = opx[opcode & 0xF000];
-      }
-      if (!method) {
-        console.log(opcode.toString(16), pc, v, x, y, memory[pc], memory[pc + 1]);
-        throw "invalid opcode";
-      }
-      pc += 2;
-      method();
-      cttr++;
-      if (cttr < -1314) {
-        System.exit();
-      }
-      keypress = function(key) {
-        return console.log("lol");
-      };
       if (!(sound_timer < 1)) {
         sound_timer--;
       }
       if (!(delay_timer < 1)) {
         delay_timer--;
       }
-      if (sound_timer > 1) {
-        3;
-      }
+      return setImmediate(cycle);
+    };
+    draw = function() {
+      var buffer, k, vv, xx, yy, _l, _len1, _len2, _m, _ref1;
+
       buffer = "";
-      for (yy = _o = 0, _len1 = screen.length; _o < _len1; yy = ++_o) {
+      for (yy = _l = 0, _len1 = screen.length; _l < _len1; yy = ++_l) {
         k = screen[yy];
-        buffer += "\x1B[" + yy + ";" + 0 + "H";
         _ref1 = screen[yy];
-        for (xx = _p = 0, _len2 = _ref1.length; _p < _len2; xx = ++_p) {
+        for (xx = _m = 0, _len2 = _ref1.length; _m < _len2; xx = ++_m) {
           vv = _ref1[xx];
-          buffer += vv;
+          if (screen[yy][xx] !== prevscreen[yy][xx]) {
+            buffer += "\x1B[" + (yy + 1) + ";" + (xx + 100) + "H";
+            buffer += vv ? '\x1B[42m ' : '\x1B[40m ';
+            prevscreen[yy][xx] = screen[yy][xx];
+          }
         }
       }
-      buffer += "\x1B[" + 32 + ";" + 0 + "H";
+      buffer += "\x1B[40m\x1B[" + 32 + ";" + 3 + "H";
+      if (!(drawTimer / 500 % 2)) {
+        refresh();
+        drawTimer = 0;
+      }
       if (bufferon) {
         process.stdout.write(buffer);
       } else {
 
       }
-      if (running) {
-        return setImmediate(cycle);
-      }
+      return setTimeout(draw, 1);
     };
     process.nextTick(cycle);
-    sound = function() {
-      return console.log("beep");
-    };
+    process.nextTick(draw);
     process.stdin.setRawMode(true);
     process.stdin.setEncoding('utf8');
     return process.stdin.on('data', function(chunk) {
       var method;
 
-      console.log(chunk, keys[chunk]);
-      if (chunk === "o") {
-        process.exit();
-      }
       method = keys[chunk.toString()];
       if (method) {
-        method();
+        keypress(method());
       }
-      return keypress();
+      if (!method) {
+        return console.log("no mapping: " + chunk);
+      }
     });
   };
 
