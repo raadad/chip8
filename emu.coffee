@@ -1,39 +1,38 @@
 require('tty').setRawMode true
 fs = require('fs');
+
 opcode = 0
-memory = []
+
 v = []
 v[ii] = 0 for ii in [0..15]
+
 x = 0
 y = 0
 i = 0
-sound_timer = 0
-delay_timer = 0
+f = 0xF
+
+
 pc = 0x200
 stack = []
 pointer = 0
+
+
+sound_timer = 0
+delay_timer = 0
+draw_timer = 0
+cycle_timer = 0
+
 screen = []
+prevscreen = []
+
 bufferon = true
 currentkey = 0
+
 running = true
 keydown = 0
 keypress = 0
-keyTimer = null
-drawTimer = 0
-cycleTimer = 0
-prevscreen = []
 
-
-
-refresh = ->
-    prevscreen[yy] = [] for yy in [0..31]
-    prevscreen[yy][xx] = true for xx in [0..63] for yy in [0..31]
-refresh()
-
-clear = ->
-    screen[yy] = [] for yy in [0..31]
-    screen[yy][xx] = false for xx in [0..63] for yy in [0..31]
-clear()
+rom = fs.readFileSync(process.argv[2]).toJSON()
 
 fonts = [
     0xF0, 0x90, 0x90, 0x90, 0xF0, # 0
@@ -75,9 +74,8 @@ keys =
     "p": -> process.exit(); return false
     "l": -> bufferon = !bufferon; return false
 
-
+memory = []
 memory[ii] = fonts[ii] for val,ii in fonts
-rom = fs.readFileSync(process.argv[2]).toJSON()
 memory[512+ii] = rom[ii] for ii in [0..rom.length]
 
 opx =
@@ -113,21 +111,21 @@ opx =
         v[x] = v[x] ^ v[y]
     0x8004: ->
         v[x] = v[x] + v[y]
-        v[15] = +(v[x] > 255)
+        v[f] = +(v[x] > 255)
         v[x] = v[x] - 256 if v[x] > 255
     0x8005: ->
-        v[15] = +(v[x] > v[y])
+        v[f] = +(v[x] > v[y])
         v[x] = v[x] + v[y]
         v[x] = v[x] + 256 if v[x] < 0
     0x8006: ->
-        v[15] = 1 if v[x] & 0x1
+        v[f] = 1 if v[x] & 0x1
         v[x] = v[x] >> 1
     0x8007: ->
-        v[15] = +(v[y] > v[x])
+        v[f] = +(v[y] > v[x])
         v[x] = v[y] - v[x]
         v[x] = v[x] + 256 if v[x] < 0
     0x800E: ->
-        v[15] = +(v[x] & 0x80)
+        v[f] = +(v[x] & 0x80)
         v[x] = v[x] << 1
         v[x] = v[x] - 256 if v[x] > 255
     0x9000: ->
@@ -139,14 +137,14 @@ opx =
     0xC000: ->
         v[x] =  Math.floor(Math.random() * 0xFF) & (opcode & 0xFF)
     0xD000: ->
-        v[15] = 0
+        v[f] = 0
         n = opcode & 0x000F
         for yy in [0..n-1]
             for xx in [0..7]
                 xc = v[x]+xx
                 yc = v[y]+yy
                 if (memory[i+yy] >> (7 - xx)) & 0x1
-                    v[15] = 1 if screen[v[y]+yy][v[x]+xx]
+                    v[f] = 1 if screen[v[y]+yy][v[x]+xx]
                     screen[yc][xc] = screen[yc][xc] ^ 1
     0xE09E: ->
         pc += 2 if v[x] == keydown
@@ -177,12 +175,13 @@ opx =
         v[itr] = memory[i + itr] for itr in [0..x]
 
 
+
 cycle = ->
     if running
         keypress = (key) ->
             keydown = key
-            clearTimeout(keyTimer)
-            keyTimer = setTimeout(->
+            clearTimeout(key_timer)
+            key_timer = setTimeout(->
                 keydown = false
             ,100)
 
@@ -195,17 +194,17 @@ cycle = ->
         method = opx[opcode & 0xF000] unless method
 
         unless method
-            #console.log(opcode.toString(16),pc,v,x,y,memory[pc],memory[pc+1]);
+            console.log(opcode.toString(16),pc,v,x,y,memory[pc],memory[pc+1]);
             throw "invalid opcode"
         pc += 2
         method()
         console.log("\x07") if sound_timer > 0
 
-    unless cycleTimer % 2
+    unless cycle_timer % 2
         sound_timer-- unless sound_timer < 1
         delay_timer-- unless delay_timer < 1
 
-    cycleTimer++
+    cycle_timer++
     setTimeout(cycle)
 
 draw = ->
@@ -219,10 +218,10 @@ draw = ->
         buffer += '\x1B[40m '
 
 
-    unless drawTimer > 100
+    unless draw_timer > 100
         refresh()
-        drawTimer = 0
-    drawTimer++
+        draw_timer = 0
+    draw_timer++
 
     if bufferon
         process.stdout.write(buffer)
@@ -230,9 +229,21 @@ draw = ->
         console.log(opcode.toString(16),pc,v,x,y,memory[pc],memory[pc+1])
     setTimeout(draw,60)
 
+
+refresh = ->
+    prevscreen[yy] = [] for yy in [0..31]
+    prevscreen[yy][xx] = true for xx in [0..63] for yy in [0..31]
+
+
+clear = ->
+    screen[yy] = [] for yy in [0..31]
+    screen[yy][xx] = false for xx in [0..63] for yy in [0..31]
+
+refresh()
+clear()
+
 process.nextTick cycle
 process.nextTick draw
-
 process.stdin.setRawMode true
 process.stdin.setEncoding('utf8')
 process.stdin.on('data', (chunk) ->
